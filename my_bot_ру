@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 # ================= НАСТРОЙКИ =================
 TG_TOKEN = "8706725141:AAFrtMaAkCQC5j94gNQBR-Vi144pB-zhPfQ"
-TG_CHAT_ID = "mihailgoski"
+TG_CHAT_ID = "@mihailgoski"
 VK_WALL_URL = "https://m.vk.com/avto35"  # Ссылка на группу ВК
 
 KEYWORDS = [
