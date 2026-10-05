@@ -30,6 +30,21 @@ def send_tg_message(text):
     except Exception as e:
         print(f"Ошибка отправки в Telegram: {e}")
 
+def get_posts_from_soup(soup):
+    """Ищет посты по разным селекторам мобильной и полной версии ВК"""
+    # 1. Попытка найти по стандартным классам постов
+    posts = soup.find_all("div", class_=["pi_text", "wall_item", "wall_post_text", "post_text", "pi_content"])
+    if posts:
+        return posts
+
+    # 2. Попытка через расширенные CSS-селекторы
+    posts = soup.select(".wall_item, .post_text, [class*='pi_text'], [class*='post_text'], [class*='wall_post']")
+    if posts:
+        return posts
+
+    # 3. Поиск по элементам со строками текста
+    return soup.find_all(["article", "section"], class_=lambda c: c and ("post" in c or "item" in c))
+
 def main():
     first_run = not os.path.exists("seen.txt")
     seen_posts = set()
@@ -40,7 +55,8 @@ def main():
 
     print("Загружаю страницу ВК без API...")
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
     }
 
     try:
@@ -53,22 +69,20 @@ def main():
         return
 
     soup = BeautifulSoup(response.text, "html.parser")
-    
-    # Ищем блоки публикаций
-    posts = soup.find_all("div", class_="pi_text")
+    posts = get_posts_from_soup(soup)
 
     if not posts:
-        print("Посты не найдены или структура страницы изменилась.")
+        print("Посты не найдены. Проверьте статус доступа к странице.")
         return
 
-    print(f"Успешно найдено постов на странице: {len(posts)}")
+    print(f"Успешно найдено блоков на странице: {len(posts)}")
 
     new_seen = set(seen_posts)
 
     # Перебираем посты от старых к новым
     for post in reversed(posts[:10]):
         text = post.get_text(separator="\n", strip=True)
-        if not text:
+        if not text or len(text) < 10:
             continue
 
         text_lower = text.lower()
@@ -96,6 +110,9 @@ def main():
     with open("seen.txt", "w", encoding="utf-8") as f:
         for pid in new_seen:
             f.write(f"{pid}\n")
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()
