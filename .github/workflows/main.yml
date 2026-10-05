@@ -2,7 +2,7 @@ name: Run VK Bot
 
 on:
   schedule:
-    - cron: '*/10 * * * *'  # Проверка каждые 10 минут
+    - cron: '*/15 * * * *'  # Проверка каждые 15 минут
   workflow_dispatch:        # Кнопка для ручного запуска
 
 permissions:
