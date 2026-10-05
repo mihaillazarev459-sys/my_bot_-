@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 
 # ================== НАСТРОЙКИ ==================
 TG_TOKEN = "8706725141:AAFrtMaAkCQC5j94gNQBR-Vi144pB-zhPfQ"  # Вашего бота
-TG_CHAT_ID = "@mihailgoski"                                 # Ваш канал/чат
+TG_CHAT_ID = "1752884535"                                 # Ваш канал/чат
 VK_DOMAIN = "avto35"
 
 # ТЕСТОВЫЙ РЕЖИМ: 
