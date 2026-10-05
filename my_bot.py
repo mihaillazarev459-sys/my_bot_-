@@ -2,70 +2,86 @@ import os
 import requests
 from bs4 import BeautifulSoup
 
-# ================= НАСТРОЙКИ =================
-TG_TOKEN = "8706725141:AAFrtMaAkCQC5j94gNQBR-Vi144pB-zhPfQ"
-TG_CHAT_ID = "@mihailgoski"
-VK_WALL_URL = "https://m.vk.com/avto35"  # Ссылка на группу ВК
-
-KEYWORDS = [
-    "2107", "2105", "ваз 2107", "ваз 2105", 
-    "семёрка", "пятёрка", 
-    "цена подарок", "на каракат", "снегоход"
-]
-# =============================================
-
-headers = {
-    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
-}
+# ================== НАСТРОЙКИ ==================
+TG_TOKEN = "8706725141:AAFrtMaAKCQC5j94gNQBR-V144pB-zhPFQ"  # Ваш Telegram-бот
+TG_CHAT_ID = "@mihailgoski"                             # Ваш канал/чат
+VK_WALL_URL = "https://m.vk.com/avto35"
+# ===============================================
 
 def send_tg_message(text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
-    payload = {"chat_id": TG_CHAT_ID, "text": text, "disable_web_page_preview": False}
+    payload = {
+        "chat_id": TG_CHAT_ID,
+        "text": text,
+        "disable_web_page_preview": False
+    }
     try:
-        requests.post(url, json=payload, timeout=10)
+        res = requests.post(url, json=payload, timeout=10)
+        if not res.ok:
+            print(f"Ошибка ответа TG API: {res.text}")
     except Exception as e:
-        print(f"Ошибка отправки: {e}")
+        print(f"Ошибка отправки в Telegram: {e}")
 
 def main():
+    first_run = not os.path.exists("seen.txt")
     seen_posts = set()
-    if os.path.exists("seen.txt"):
+
+    if not first_run:
         with open("seen.txt", "r", encoding="utf-8") as f:
             seen_posts = set(line.strip() for line in f)
 
-    print("Проверяю стену ВК...")
+    print("Загружаю страницу ВК без API...")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    }
+
     try:
-        response = requests.get(VK_WALL_URL, headers=headers, timeout=10)
+        response = requests.get(VK_WALL_URL, headers=headers, timeout=15)
         if response.status_code != 200:
             print(f"Ошибка загрузки ВК: {response.status_code}")
             return
-
-        soup = BeautifulSoup(response.text, "html.parser")
-        posts = soup.find_all("div", class_="pi_text")
-
-        new_seen = list(seen_posts)
-
-        for post in posts:
-            text = post.get_text().strip()
-            text_lower = text.lower()
-            post_id = str(hash(text))
-
-            if post_id in seen_posts:
-                continue
-
-            if any(keyword in text_lower for keyword in KEYWORDS):
-                msg = f"🔍 Найдено объявление!\n\n{text[:300]}...\n\nИсточник: {VK_WALL_URL}"
-                send_tg_message(msg)
-                print("[+] Отправлено новое объявление!")
-
-            new_seen.append(post_id)
-
-        # Сохраняем последние 100 постов
-        with open("seen.txt", "w", encoding="utf-8") as f:
-            for item in new_seen[-100:]:
-                f.write(f"{item}\n")
-
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"Ошибка запроса к ВК: {e}")
+        return
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    
+    # Ищем блоки публикаций
+    posts = soup.find_all("div", class_="pi_text")
+
+    if not posts:
+        print("Посты не найдены или структура страницы изменилась.")
+        return
+
+    print(f"Успешно найдено постов на странице: {len(posts)}")
+
+    new_seen = set(seen_posts)
+
+    # Перебираем посты от старых к новым (чтобы отсылать по очереди)
+    for post in reversed(posts[:10]):
+        text = post.get_text(separator="\n", strip=True)
+        if not text:
+            continue
+
+        # Уникальный идентификатор текста поста
+        post_id = str(hash(text))
+
+        if post_id in seen_posts:
+            continue
+
+        print(f"Найден новый пост: {text[:30]}...")
+
+        # На первом запуске только запоминаем тексты, отправку делаем со второго
+        if not first_run:
+            msg = f"🚘 **Новый пост в avto35**:\n\n{text}"
+            send_tg_message(msg)
+
+        new_seen.add(post_id)
+
+    # Сохраняем обработанные посты
+    with open("seen.txt", "w", encoding="utf-8") as f:
+        for pid in new_seen:
+            f.write(f"{pid}\n")
 
 if __name__ == "__main__":
     main()
