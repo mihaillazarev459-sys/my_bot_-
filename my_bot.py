@@ -1,13 +1,12 @@
 import os
+import re
 import requests
 from bs4 import BeautifulSoup
 
 # ================== НАСТРОЙКИ ==================
 TG_TOKEN = "8706725141:AAFrtMaAKCQC5j94gNQBR-V144pB-zhPFQ"  # Ваш Telegram-бот
 TG_CHAT_ID = "@mihailgoski"                             # Ваш канал/чат
-
-# mode=4 включает отображение стены и постов в виджете
-VK_WIDGET_URL = "https://vk.com/widget_community.php?gid=avto35&mode=4"
+VK_DOMAIN = "avto35"
 
 # Список кодовых слов и фраз для фильтрации (в нижнем регистре)
 KEYWORDS = [
@@ -17,6 +16,24 @@ KEYWORDS = [
     "каракат"
 ]
 # ===============================================
+
+def get_numeric_group_id(domain):
+    """Находит числовой ID группы VK по её буквенному имени"""
+    url = f"https://vk.com/{domain}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    }
+    try:
+        res = requests.get(url, headers=headers, timeout=10)
+        # Ищем ID в коде страницы (group_id, public_id или wall-XXXXX_)
+        match = re.search(r'["\']group_id["\']?\s*:\s*(\d+)', res.text)
+        if not match:
+            match = re.search(r'wall-(\d+)_', res.text)
+        if match:
+            return match.group(1)
+    except Exception as e:
+        print(f"Ошибка при определении ID группы: {e}")
+    return None
 
 def send_tg_message(text):
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
@@ -40,13 +57,23 @@ def main():
         with open("seen.txt", "r", encoding="utf-8") as f:
             seen_posts = set(line.strip() for line in f)
 
-    print("Загружаю стену ВК через виджет со стеной (mode=4)...")
+    print("Определяю числовой ID группы...")
+    gid = get_numeric_group_id(VK_DOMAIN)
+
+    if not gid:
+        print(f"Не удалось определить числовой ID группы {VK_DOMAIN}.")
+        return
+
+    print(f"Числовой ID группы найден: {gid}")
+    widget_url = f"https://vk.com/widget_community.php?gid={gid}&mode=4"
+
+    print("Загружаю стену ВК через виджет...")
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
 
     try:
-        response = requests.get(VK_WIDGET_URL, headers=headers, timeout=15)
+        response = requests.get(widget_url, headers=headers, timeout=15)
         if response.status_code != 200:
             print(f"Ошибка загрузки виджета ВК: {response.status_code}")
             return
@@ -58,9 +85,6 @@ def main():
     
     # В режиме mode=4 посты находятся в блоках .wpost_text или .wpost
     posts = soup.select(".wpost_text, .wpost_content, .wpost")
-
-    if not posts:
-        posts = soup.find_all("div", class_=lambda c: c and "wpost" in c)
 
     if not posts:
         print("Посты в виджете не найдены.")
@@ -89,7 +113,6 @@ def main():
 
         print(f"Найден совпавший пост: {text[:30]}...")
 
-        # На первом запуске сохраняем текущие посты, отправляем со второго
         if not first_run:
             msg = f"🚘 **Новый пост в avto35**:\n\n{text}"
             send_tg_message(msg)
