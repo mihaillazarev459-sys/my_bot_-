@@ -124,7 +124,8 @@ def main():
 
         print(f"Найден совпавший пост: {text[:30]}...")
 
-        if not first msg = f"🚘 **Новый пост в avto35**:\n\n{text}"
+        if not first_run:
+            msg = f"🚘 **Новый пост в avto35**:\n\n{text}"
             send_tg_message(msg)
 
         new_seen.add(post_id)
