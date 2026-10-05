@@ -4,8 +4,8 @@ import requests
 from bs4 import BeautifulSoup
 
 # ================== НАСТРОЙКИ ==================
-TG_TOKEN = "8706725141:AAFrtMaAkCQC5j94gNQBR-Vi144pB-zhPfQ"  # Вашего бота
-TG_CHAT_ID = "1752884535"                                 # Ваш канал/чат
+TG_TOKEN = "8706725141:AAFrtMaAkCQC5j94gNQBR-Vi144pB-zhPfQ"  # Ваш Telegram-бот
+TG_CHAT_ID = "ВАШ_ЧИСЛОВОЙ_ID"                             # Ваш ID (число) или ID канала
 VK_DOMAIN = "avto35"
 
 # ТЕСТОВЫЙ РЕЖИМ: 
@@ -39,6 +39,10 @@ def get_numeric_group_id(domain):
     return None
 
 def send_tg_message(text):
+    # Ограничение длины сообщения для защиты от ошибки Telegram API
+    if len(text) > 4000:
+        text = text[:3990] + "\n\n...[текст обрезан]"
+
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
     payload = {
         "chat_id": TG_CHAT_ID,
@@ -120,13 +124,12 @@ def main():
 
         print(f"Найден совпавший пост: {text[:30]}...")
 
-        if not first_run:
-            msg = f"🚘 **Новый пост в avto35**:\n\n{text}"
+        if not first msg = f"🚘 **Новый пост в avto35**:\n\n{text}"
             send_tg_message(msg)
 
         new_seen.add(post_id)
 
-    with open("seen.txt", "w", "encoding=utf-8") as f:
+    with open("seen.txt", "w", "encoding="utf-8") as f:
         for pid in new_seen:
             f.write(f"{pid}\n")
 
