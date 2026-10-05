@@ -5,7 +5,9 @@ from bs4 import BeautifulSoup
 # ================== НАСТРОЙКИ ==================
 TG_TOKEN = "8706725141:AAFrtMaAKCQC5j94gNQBR-V144pB-zhPFQ"  # Ваш Telegram-бот
 TG_CHAT_ID = "@mihailgoski"                             # Ваш канал/чат
-VK_WALL_URL = "https://m.vk.com/avto35"
+
+# Виджет сообщества — отдаёт чистый HTML без проверок и авторизации
+VK_WIDGET_URL = "https://vk.com/widget_community.php?gid=avto35"
 
 # Список кодовых слов и фраз для фильтрации (в нижнем регистре)
 KEYWORDS = [
@@ -30,21 +32,6 @@ def send_tg_message(text):
     except Exception as e:
         print(f"Ошибка отправки в Telegram: {e}")
 
-def get_posts_from_soup(soup):
-    """Ищет посты по разным селекторам мобильной и полной версии ВК"""
-    # 1. Попытка найти по стандартным классам постов
-    posts = soup.find_all("div", class_=["pi_text", "wall_item", "wall_post_text", "post_text", "pi_content"])
-    if posts:
-        return posts
-
-    # 2. Попытка через расширенные CSS-селекторы
-    posts = soup.select(".wall_item, .post_text, [class*='pi_text'], [class*='post_text'], [class*='wall_post']")
-    if posts:
-        return posts
-
-    # 3. Поиск по элементам со строками текста
-    return soup.find_all(["article", "section"], class_=lambda c: c and ("post" in c or "item" in c))
-
 def main():
     first_run = not os.path.exists("seen.txt")
     seen_posts = set()
@@ -53,36 +40,41 @@ def main():
         with open("seen.txt", "r", encoding="utf-8") as f:
             seen_posts = set(line.strip() for line in f)
 
-    print("Загружаю страницу ВК без API...")
+    print("Загружаю стену ВК через публичный виджет...")
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
 
     try:
-        response = requests.get(VK_WALL_URL, headers=headers, timeout=15)
+        response = requests.get(VK_WIDGET_URL, headers=headers, timeout=15)
         if response.status_code != 200:
-            print(f"Ошибка загрузки ВК: {response.status_code}")
+            print(f"Ошибка загрузки виджета ВК: {response.status_code}")
             return
     except Exception as e:
-        print(f"Ошибка запроса к ВК: {e}")
+        print(f"Ошибка запроса: {e}")
         return
 
     soup = BeautifulSoup(response.text, "html.parser")
-    posts = get_posts_from_soup(soup)
+    
+    # Виджет хранит тексты постов в классах .wpost_text и .wpost_content
+    posts = soup.select(".wpost_text, .wpost_content")
 
     if not posts:
-        print("Посты не найдены. Проверьте статус доступа к странице.")
+        # Запасной вариант поиска по элементам виджета
+        posts = soup.find_all("div", class_=lambda c: c and "wpost" in c)
+
+    if not posts:
+        print("Посты в виджете не найдены.")
         return
 
-    print(f"Успешно найдено блоков на странице: {len(posts)}")
+    print(f"Успешно найдено постов в виджете: {len(posts)}")
 
     new_seen = set(seen_posts)
 
     # Перебираем посты от старых к новым
     for post in reversed(posts[:10]):
         text = post.get_text(separator="\n", strip=True)
-        if not text or len(text) < 10:
+        if not text or len(text) < 5:
             continue
 
         text_lower = text.lower()
@@ -113,6 +105,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-if __name__ == "__main__":
     main()
