@@ -25,7 +25,6 @@ def get_numeric_group_id(domain):
     }
     try:
         res = requests.get(url, headers=headers, timeout=10)
-        # Ищем ID в коде страницы (group_id, public_id или wall-XXXXX_)
         match = re.search(r'["\']group_id["\']?\s*:\s*(\d+)', res.text)
         if not match:
             match = re.search(r'wall-(\d+)_', res.text)
@@ -65,11 +64,12 @@ def main():
         return
 
     print(f"Числовой ID группы найден: {gid}")
-    widget_url = f"https://vk.com/widget_community.php?gid={gid}&mode=4"
+    widget_url = f"https://vk.com/widget_community.php?gid={gid}&mode=4&width=500"
 
     print("Загружаю стену ВК через виджет...")
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept-Language": "ru-RU,ru;q=0.9"
     }
 
     try:
@@ -83,11 +83,15 @@ def main():
 
     soup = BeautifulSoup(response.text, "html.parser")
     
-    # В режиме mode=4 посты находятся в блоках .wpost_text или .wpost
-    posts = soup.select(".wpost_text, .wpost_content, .wpost")
+    # Расширенный селектор для поиска постов в виджете
+    posts = soup.select("[id^='post-'], .wall_item, .wpost, .wpost_text, .wall_post_text, [class*='wpost'], [class*='post']")
 
     if not posts:
-        print("Посты в виджете не найдены.")
+        posts = soup.find_all("div", class_=lambda c: c and ("post" in c or "wall" in c))
+
+    if not posts:
+        print("Посты в виджете не найдены. Заголовки страницы:")
+        print(response.text[:300])
         return
 
     print(f"Успешно найдено постов в виджете: {len(posts)}")
