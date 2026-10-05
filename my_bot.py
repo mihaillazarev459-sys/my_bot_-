@@ -126,10 +126,7 @@ def main():
 
         new_seen.add(post_id)
 
-    with open("seen.txt", "w", encoding="utf
-
-
-") as f:
+    with open("seen.txt", "w", encoding="utf") as f:
         for pid in new_seen:
             f.write(f"{pid}\n")
 
