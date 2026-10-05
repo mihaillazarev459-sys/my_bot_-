@@ -4,13 +4,13 @@ import requests
 from bs4 import BeautifulSoup
 
 # ================== НАСТРОЙКИ ==================
-TG_TOKEN = "8706725141:AAFrtMaAKCQC5j94gNQBR-V144pB-zhPFQ"  # Ваш Telegram-бот
-TG_CHAT_ID = "@mihailgoski"                             # Ваш канал/чат
+TG_TOKEN = "8706725141:AAFrtMaAkCQC5j94gNQBR-Vi144pB-zhPfQ"  # Вашего бота
+TG_CHAT_ID = "@mihailgoski"                                 # Ваш канал/чат
 VK_DOMAIN = "avto35"
 
 # ТЕСТОВЫЙ РЕЖИМ: 
-# True  — прямо сейчас принудительно отправит 1 пост в Telegram для проверки.
-# False — обычная рабочая фильтрация по кодовым словам.
+# True  — прямо сейчас отправит 1 пост в Telegram для проверки связи.
+# False — обычный рабочий режим с фильтрацией по кодовым словам.
 TEST_MODE = True
 
 # Список кодовых слов и фраз для фильтрации (в нижнем регистре)
@@ -93,7 +93,7 @@ def main():
         send_tg_message(msg)
         return
 
-    # --- ОВНЫЙ РАБОЧИЙ РЕЖИМ ---
+    # --- ОСНОВНОЙ РАБОЧИЙ РЕЖИМ ---
     first_run = not os.path.exists("seen.txt")
     seen_posts = set()
 
@@ -126,9 +126,9 @@ def main():
 
         new_seen.add(post_id)
 
-    with open("seen.txt", "w", encoding="utf") as f:
+    with open("seen.txt", "w", encoding=tf-8") as f:
         for pid in new_seen:
             f.write(f"{pid}\n")
 
 if __name__ == "__main__":
-    main()-8
+    main()"u
