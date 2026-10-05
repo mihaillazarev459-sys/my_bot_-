@@ -6,8 +6,8 @@ from bs4 import BeautifulSoup
 TG_TOKEN = "8706725141:AAFrtMaAKCQC5j94gNQBR-V144pB-zhPFQ"  # Ваш Telegram-бот
 TG_CHAT_ID = "@mihailgoski"                             # Ваш канал/чат
 
-# Виджет сообщества — отдаёт чистый HTML без проверок и авторизации
-VK_WIDGET_URL = "https://vk.com/widget_community.php?gid=avto35"
+# mode=4 включает отображение стены и постов в виджете
+VK_WIDGET_URL = "https://vk.com/widget_community.php?gid=avto35&mode=4"
 
 # Список кодовых слов и фраз для фильтрации (в нижнем регистре)
 KEYWORDS = [
@@ -40,7 +40,7 @@ def main():
         with open("seen.txt", "r", encoding="utf-8") as f:
             seen_posts = set(line.strip() for line in f)
 
-    print("Загружаю стену ВК через публичный виджет...")
+    print("Загружаю стену ВК через виджет со стеной (mode=4)...")
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
@@ -56,11 +56,10 @@ def main():
 
     soup = BeautifulSoup(response.text, "html.parser")
     
-    # Виджет хранит тексты постов в классах .wpost_text и .wpost_content
-    posts = soup.select(".wpost_text, .wpost_content")
+    # В режиме mode=4 посты находятся в блоках .wpost_text или .wpost
+    posts = soup.select(".wpost_text, .wpost_content, .wpost")
 
     if not posts:
-        # Запасной вариант поиска по элементам виджета
         posts = soup.find_all("div", class_=lambda c: c and "wpost" in c)
 
     if not posts:
@@ -79,11 +78,10 @@ def main():
 
         text_lower = text.lower()
 
-        # Фильтр по кодовым словам: пропускаем пост, если нет совпадений
+        # Фильтр по кодовым словам
         if KEYWORDS and not any(kw.lower() in text_lower for kw in KEYWORDS):
             continue
 
-        # Уникальный идентификатор текста поста
         post_id = str(hash(text))
 
         if post_id in seen_posts:
@@ -91,18 +89,16 @@ def main():
 
         print(f"Найден совпавший пост: {text[:30]}...")
 
-        # На первом запуске только запоминаем тексты, отправку делаем со второго
+        # На первом запуске сохраняем текущие посты, отправляем со второго
         if not first_run:
             msg = f"🚘 **Новый пост в avto35**:\n\n{text}"
             send_tg_message(msg)
 
         new_seen.add(post_id)
 
-    # Сохраняем обработанные посты
     with open("seen.txt", "w", encoding="utf-8") as f:
         for pid in new_seen:
             f.write(f"{pid}\n")
 
 if __name__ == "__main__":
-    main()
     main()
