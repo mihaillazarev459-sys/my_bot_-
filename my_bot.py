@@ -6,6 +6,14 @@ from bs4 import BeautifulSoup
 TG_TOKEN = "8706725141:AAFrtMaAKCQC5j94gNQBR-V144pB-zhPFQ"  # Ваш Telegram-бот
 TG_CHAT_ID = "@mihailgoski"                             # Ваш канал/чат
 VK_WALL_URL = "https://m.vk.com/avto35"
+
+# Список кодовых слов и фраз для фильтрации (в нижнем регистре)
+KEYWORDS = [
+    "ваз 2107",
+    "ваз 2105",
+    "цена подарок",
+    "каракат"
+]
 # ===============================================
 
 def send_tg_message(text):
@@ -57,10 +65,16 @@ def main():
 
     new_seen = set(seen_posts)
 
-    # Перебираем посты от старых к новым (чтобы отсылать по очереди)
+    # Перебираем посты от старых к новым
     for post in reversed(posts[:10]):
         text = post.get_text(separator="\n", strip=True)
         if not text:
+            continue
+
+        text_lower = text.lower()
+
+        # Фильтр по кодовым словам: пропускаем пост, если нет совпадений
+        if KEYWORDS and not any(kw.lower() in text_lower for kw in KEYWORDS):
             continue
 
         # Уникальный идентификатор текста поста
@@ -69,7 +83,7 @@ def main():
         if post_id in seen_posts:
             continue
 
-        print(f"Найден новый пост: {text[:30]}...")
+        print(f"Найден совпавший пост: {text[:30]}...")
 
         # На первом запуске только запоминаем тексты, отправку делаем со второго
         if not first_run:
