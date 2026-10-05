@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 
 # ================== НАСТРОЙКИ ==================
 TG_TOKEN = "8706725141:AAFrtMaAkCQC5j94gNQBR-Vi144pB-zhPfQ"  # Ваш Telegram-бот
-TG_CHAT_ID = "ВАШ_ЧИСЛОВОЙ_ID"                             # Ваш ID (число) или ID канала
+TG_CHAT_ID = "1752884535"                             # Ваш ID (число) или ID канала
 VK_DOMAIN = "avto35"
 
 # ТЕСТОВЫЙ РЕЖИМ: 
