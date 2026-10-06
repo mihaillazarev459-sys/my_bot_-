@@ -2,28 +2,22 @@ import os
 import re
 import requests
 from bs4 import BeautifulSoup
+import hashlib
 
 # ================== НАСТРОЙКИ ==================
-TG_TOKEN = "8706725141:AAFrtMaAkCQC5j94gNQBR-Vi144pB-zhPfQ"  # Ваш Telegram-бот
-TG_CHAT_ID = "1752884535"                             # Ваш ID (число) или ID канала
+TG_TOKEN = "8706725141:AAFrtMaAkCQC5j94gNQBR-Vi144pB-zhPfQ"
+TG_CHAT_ID = "1752884535"
 VK_DOMAIN = "avto35"
 
-# ТЕСТОВЫЙ РЕЖИМ: 
-# True  — прямо сейчас отправит 1 пост в Telegram для проверки связи.
-# False — обычный рабочий режим с фильтрацией по кодовым словам.
+# Переведите в False, когда настроите и захотите запустить фильтрацию
 TEST_MODE = True
 
-# Список кодовых слов и фраз для фильтрации (в нижнем регистре)
 KEYWORDS = [
-    # ВАЗ классика (даже если написали просто модель)
     "ваз 2107", "ваз-2107", "ваз2107", "лада 2107", "2107", "семёрка", "семерка",
     "ваз 2105", "ваз-2105", "ваз2105", "лада 2105", "2105", "пятёрка", "пятерка",
-    # УАЗ и его модификации
     "уаз", "уазик", "уаз-469", "уаз 469", "уаз-39094", "фермер", "буханка", 
     "головастик", "469", "хантер",
-    # Цена / Выгода
     "цена подарок", "цена-подарок", "отдам даром",
-    # Каракат
     "каракат", "каракаты", "вездеход каракат"
 ]
 # ===============================================
@@ -45,7 +39,6 @@ def get_numeric_group_id(domain):
     return None
 
 def send_tg_message(text):
-    # Ограничение длины сообщения для защиты от ошибки Telegram API
     if len(text) > 4000:
         text = text[:3990] + "\n\n...[текст обрезан]"
 
@@ -63,6 +56,10 @@ def send_tg_message(text):
             print(f"Ошибка ответа TG API: {res.text}")
     except Exception as e:
         print(f"Ошибка отправки в Telegram: {e}")
+
+def get_stable_id(text):
+    # Стабильный хэш текста вместо встроенного рандомизируемого hash()
+    return hashlib.md5(text.encode('utf-8')).hexdigest()
 
 def main():
     gid = get_numeric_group_id(VK_DOMAIN)
@@ -86,32 +83,33 @@ def main():
         return
 
     soup = BeautifulSoup(response.text, "html.parser")
-    posts = soup.select("[id^='post-'], .wall_item, .wpost, .wpost_text, .wall_post_text, [class*='wpost'], [class*='post']")
-
+    
+    # Ищем именно текстовые блоки записей внутри виджета
+    posts = soup.select(".wall_post_text, .wpost_text, div.post_text")
     if not posts:
-        posts = soup.find_all("div", class_=lambda c: c and ("post" in c or "wall" in c))
+        # Запасной вариант поиска блоков постов
+        posts = soup.select("[id^='post-']")
 
     if not posts:
         print("Посты не найдены.")
         return
 
-    # --- ТЕСТОВЫЙ ПУСК ---
+    # --- ТЕСТОВЫЙ РЕЖИМ ---
     if TEST_MODE:
-        print("⚠️ ТЕСТОВЫЙ РЕЖИМ ВКЛЮЧЕН: Отправляю случайный свежий пост в Telegram...")
+        print("⚠️ ТЕСТОВЫЙ РЕЖИМ ВКЛЮЧЕН: Отправляю первый попавшийся текст поста...")
         sample_text = posts[0].get_text(separator="\n", strip=True)
-        msg = f"🧪 **ТЕСТОВОЕ СООБЩЕНИЕ ИЗ avto35**:\n\n{sample_text}"
+        msg = f"🧪 **ТЕСТОВОЕ СООБЩЕНИЕ**:\n\n{sample_text}"
         send_tg_message(msg)
         return
 
     # --- ОСНОВНОЙ РАБОЧИЙ РЕЖИМ ---
-    first_run = not os.path.exists("seen.txt")
     seen_posts = set()
-
-    if not first_run:
+    if os.path.exists("seen.txt"):
         with open("seen.txt", "r", encoding="utf-8") as f:
             seen_posts = set(line.strip() for line in f)
 
     new_seen = set(seen_posts)
+    new_posts_found = 0
 
     for post in reversed(posts[:10]):
         text = post.get_text(separator="\n", strip=True)
@@ -123,22 +121,25 @@ def main():
         if KEYWORDS and not any(kw.lower() in text_lower for kw in KEYWORDS):
             continue
 
-        post_id = str(hash(text))
+        post_id = get_stable_id(text)
 
         if post_id in seen_posts:
             continue
 
-        print(f"Найден совпавший пост: {text[:30]}...")
-
-        if not first_run:
-            msg = f"🚘 **Новый пост в avto35**:\n\n{text}"
-            send_tg_message(msg)
-
+        print(f"Найден подходящий пост: {text[:30]}...")
+        
+        msg = f"🚘 **Новый пост в avto35**:\n\n{text}"
+        send_tg_message(msg)
+        
         new_seen.add(post_id)
+        new_posts_found += 1
 
+    # Сохраняем обновленную базу просмотренных
     with open("seen.txt", "w", encoding="utf-8") as f:
         for pid in new_seen:
             f.write(f"{pid}\n")
+            
+    print(f"Скрипт отработал. Новых отправленных постов: {new_posts_found}")
 
 if __name__ == "__main__":
     main()
